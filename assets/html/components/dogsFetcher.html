@@ -1,0 +1,104 @@
+<script>
+    window.dogsFetcherData = function () {
+        return {
+            fetchedImageSrc: "",
+            breeds: {},
+            breedsFetchSuccess: false,
+            dogFetchSuccess: false,
+            breedValue: "",
+            initDogsFetcherData() {
+                this.fetchBreeds();
+            },
+            fetchBreeds() {
+                fetch(allBreedsUrl)
+                    .then((response) => response.json())
+                    .then((response) => {
+                        if (response.status !== "success") {
+                            this.breedsFetchSuccess = false;
+                            return;
+                        }
+                        this.breedsFetchSuccess = true;
+                        this.breeds = this.transformBreedsObjectToData(
+                            response.message
+                        );
+                        this.fetchDog(this.breeds[0].url);
+                    })
+                    .catch();
+            },
+            fetchDog(value) {
+                fetch(`${dogAPIBaseUrl}/breed/${value}/images/random`)
+                    .then((response) => response.json())
+                    .then((response) => {
+                        if (response.status !== "success") {
+                            this.dogFetchSuccess = false;
+                            return;
+                        }
+                        this.dogFetchSuccess = true;
+                        this.fetchedImageSrc = response.message;
+                    });
+            },
+            transformBreedsObjectToData(object) {
+                const fixedBreeds = [];
+                let currentSubBreed = 0;
+
+                for (const breed in object) {
+                    if (!Array.isArray(object[breed])) continue;
+                    else if (object[breed].length < 1) {
+                        fixedBreeds.push({
+                            url: breed,
+                            name: this.capitalizeEachWord(breed),
+                        });
+                        continue;
+                    }
+
+                    for (const subBreed of object[breed]) {
+                        fixedBreeds.push({
+                            url: breed + "/" + subBreed,
+                            name:
+                                this.capitalizeEachWord(breed) +
+                                " " +
+                                this.capitalizeEachWord(subBreed),
+                        });
+                    }
+                }
+
+                return fixedBreeds;
+            },
+            capitalizeEachWord(string) {
+                return string.replace(/\b\w/g, (match) => match.toUpperCase());
+            },
+        };
+    };
+</script>
+<div x-data="dogsFetcherData();" x-init="initDogsFetcherData();">
+    <div class="flex gap-1">
+        <div class="flex flex-col gap-3">
+            <select
+                name="breed"
+                id="breed"
+                x-model="breedValue"
+                class="p-2 text-purple-600 placeholder-purple-200 border-2 rounded-md focus:ring-blue-500 focus:ring focus:ring-offset-2 focus:ring-offset-white"
+                @change="fetchDog(breeds[breedValue].url);"
+            >
+                <template x-for="(option, optionKey) in breeds">
+                    <option
+                        :value="optionKey"
+                        class="text-black"
+                        x-text="breeds[optionKey].name"
+                    ></option>
+                </template>
+            </select>
+
+            <div class="image-wrapper">
+                <img
+                    :src="fetchedImageSrc"
+                    alt="Generated dog image!"
+                    width=""
+                    height=""
+                    loading="lazy"
+                    class="rounded"
+                />
+            </div>
+        </div>
+    </div>
+</div>
