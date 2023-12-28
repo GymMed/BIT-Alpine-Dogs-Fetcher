@@ -1,4 +1,9 @@
 <script>
+    DOGS_FETCHER_STATE_ENUM = {
+        Idle: 0,
+        Loading: 1,
+    };
+
     window.dogsFetcherData = function () {
         return {
             fetchedImageSrc: "",
@@ -6,29 +11,39 @@
             breedsFetchSuccess: false,
             dogFetchSuccess: false,
             breedValue: "",
-            initDogsFetcherData() {
+            componentState: DOGS_FETCHER_STATE_ENUM.Loading,
+            async initDogsFetcherData() {
                 this.fetchBreeds();
             },
-            fetchBreeds() {
+            async fetchBreeds() {
+                this.componentState = DOGS_FETCHER_STATE_ENUM.Loading;
+
                 fetch(allBreedsUrl)
                     .then((response) => response.json())
                     .then((response) => {
+                        this.componentState = DOGS_FETCHER_STATE_ENUM.Idle;
+
                         if (response.status !== "success") {
                             this.breedsFetchSuccess = false;
                             return;
                         }
+                        console.log(response.message);
                         this.breedsFetchSuccess = true;
                         this.breeds = this.transformBreedsObjectToData(
                             response.message
                         );
-                        this.fetchDog(this.breeds[0].url);
-                    })
-                    .catch();
+                        this.breedValue = 0;
+                        this.fetchDog(this.breeds[this.breedValue].url);
+                    });
             },
-            fetchDog(value) {
+            async fetchDog(value) {
+                this.componentState = DOGS_FETCHER_STATE_ENUM.Loading;
+
                 fetch(`${dogAPIBaseUrl}/breed/${value}/images/random`)
                     .then((response) => response.json())
                     .then((response) => {
+                        this.componentState = DOGS_FETCHER_STATE_ENUM.Idle;
+
                         if (response.status !== "success") {
                             this.dogFetchSuccess = false;
                             return;
@@ -64,6 +79,19 @@
 
                 return fixedBreeds;
             },
+            getButtonTextBasedOnState(enumState) {
+                switch (enumState) {
+                    case DOGS_FETCHER_STATE_ENUM.Idle: {
+                        return "Restart";
+                    }
+                    case DOGS_FETCHER_STATE_ENUM.Loading: {
+                        return "Loading";
+                    }
+                    default: {
+                        return "Unknown state!";
+                    }
+                }
+            },
             capitalizeEachWord(string) {
                 return string.replace(/\b\w/g, (match) => match.toUpperCase());
             },
@@ -77,7 +105,7 @@
                 name="breed"
                 id="breed"
                 x-model="breedValue"
-                class="p-2 text-purple-600 placeholder-purple-200 border-2 rounded-md focus:ring-blue-500 focus:ring focus:ring-offset-2 focus:ring-offset-white"
+                class="p-2 font-semibold text-purple-600 placeholder-purple-200 border-2 rounded-md focus:ring-blue-500 focus:ring focus:ring-offset-2 focus:ring-offset-white"
                 @change="fetchDog(breeds[breedValue].url);"
             >
                 <template x-for="(option, optionKey) in breeds">
@@ -89,6 +117,49 @@
                 </template>
             </select>
 
+            <button
+                type="button"
+                class="rounded shadow text-white bg-gradient-to-br from-green-500 to-green-700 hover:from-green-700 hover:to-green-900 font-semibold focus:ring-green-500 focus:ring focus:ring-offset-2 focus:ring-offset-white"
+                @click="fetchDog(breeds[breedValue].url);"
+            >
+                <div
+                    class="flex gap-3 justify-center items-center hover:scale-110 px-4 py-2 transition-opacity duration-1000"
+                    :class="{
+                        'opacity-30': (componentState === DOGS_FETCHER_STATE_ENUM.Loading),
+                        'opacity-100': (componentState === DOGS_FETCHER_STATE_ENUM.Idle)
+                    }"
+                >
+                    <div
+                        x-show="componentState === DOGS_FETCHER_STATE_ENUM.Loading"
+                    >
+                        <svg
+                            class="animate-spin -ml-1 h-5 w-5 text-white"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                        >
+                            <circle
+                                class="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                stroke-width="4"
+                            ></circle>
+                            <path
+                                class="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                        </svg>
+                    </div>
+
+                    <div
+                        x-text="getButtonTextBasedOnState(componentState)"
+                    ></div>
+                </div>
+            </button>
+
             <div class="image-wrapper">
                 <img
                     :src="fetchedImageSrc"
@@ -96,7 +167,7 @@
                     width=""
                     height=""
                     loading="lazy"
-                    class="rounded"
+                    class="rounded shadow-lg"
                 />
             </div>
         </div>
